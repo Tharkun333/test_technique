@@ -123,4 +123,97 @@ return function ($app,$conn) {
         return sprintf('%04d-%02d-%02d', $year, $month, $day);
     }
     // -- 3 -- //
+
+    // -- Exercice 4 : modifier une écriture -- //
+    $app->put('/comptes/{compte_uuid}/ecritures/{ecriture_uuid}', function (Request $request, Response $response, array $args) use ($conn) {
+        $compte_uuid = $args['compte_uuid'];
+        $ecriture_uuid = $args['ecriture_uuid'];
+        $data = $request->getParsedBody();
+    
+        // Récupérer tous les champs du corps de la requête
+        $uuid = $data['uuid'];
+        $label = $data['label'];
+        $date = $data["date"];
+        $type = $data["type"];
+        $amount = $data["amount"];
+        // Autres champs à récupérer
+    
+        $sql = "UPDATE ecritures SET uuid = :uuid, label = :label,date = :date,type = :type,amount = :amount WHERE compte_uuid = :compte_uuid AND uuid = :uuid";
+
+        // Vérification uuid == ecriture_uuid
+        if (strcmp($uuid, $ecriture_uuid)) {
+            $error = array(
+                "message" => "Invalid uuid. ". $uuid." != " . $ecriture_uuid 
+            );
+
+            $response->getBody()->write(json_encode($error));
+            return $response
+                ->withHeader('content-type', 'application/json')
+                ->withStatus(400);
+        }
+
+    // Vérification de la date
+        $formattedDate = formatDate($date);
+        if ($formattedDate === false) {
+            $error = array(
+                "message" => "Invalid date format. Please provide a date in the format 'dd/mm/yyyy'."
+            );
+
+            $response->getBody()->write(json_encode($error));
+            return $response
+                ->withHeader('content-type', 'application/json')
+                ->withStatus(400);
+        }
+
+        // Vérification du montant non négatif
+        if ($amount < 0) {
+            $error = array(
+                "message" => "Amount cannot be negative"
+            );
+
+            $response->getBody()->write(json_encode($error));
+            return $response
+                ->withHeader('content-type', 'application/json')
+                ->withStatus(400);
+        }
+        try {
+            $stmt = $conn->prepare($sql);
+            $stmt->bindParam(':uuid', $uuid);
+            $stmt->bindParam(':label', $label);
+            $stmt->bindParam(':date', $formattedDate);
+            $stmt->bindParam(':type', $type);
+            $stmt->bindParam(':amount', $amount);
+            $stmt->bindParam(':compte_uuid', $compte_uuid);
+        
+            $result = $stmt->execute();
+
+            $db = null;
+
+            if ($result) {
+                return $response
+                    ->withHeader('content-type', 'application/json')
+                    ->withStatus(204);
+            } else {
+                $error = array(
+                    "message" => "Failed to update ecriture"
+                );
+                $response->getBody()->write(json_encode($error));
+                return $response
+                    ->withHeader('content-type', 'application/json')
+                    ->withStatus(500);
+            }
+
+        } catch (PDOException $e) {
+            $error = array(
+                "message" => $e->getMessage()
+            );
+        
+            $response->getBody()->write(json_encode($error));
+            return $response
+                ->withHeader('content-type', 'application/json')
+                ->withStatus(500);
+        }
+    });
+
+    // -- 4 -- //
 };
