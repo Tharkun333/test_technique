@@ -216,4 +216,37 @@ return function ($app,$conn) {
     });
 
     // -- 4 -- //
+
+    // -- Exercice 5 : supprimer une écriture -- //
+    $app->delete('/comptes/{compte_uuid}/ecritures/{ecriture_uuid}', function (Request $request, Response $response, array $args) use ($conn) {
+        $compte_uuid = $args['compte_uuid'];
+        $ecriture_uuid = $args['ecriture_uuid'];
+    
+        $sql = "DELETE FROM ecritures WHERE compte_uuid = :compte_uuid AND uuid = :ecriture_uuid";
+    
+        try {
+            $stmt = $conn->prepare($sql);
+            $stmt->bindParam(':compte_uuid', $compte_uuid);
+            $stmt->bindParam(':ecriture_uuid', $ecriture_uuid);
+        
+            $result = $stmt->execute();
+        
+            $db = null;
+        
+            return $response
+                ->withHeader('content-type', 'application/json')
+                ->withStatus(204);
+
+        } catch (PDOException $e) {
+            $error = array(
+                "message" => $e->getMessage()
+            );
+        
+            $response->getBody()->write(json_encode($error));
+            return $response
+                ->withHeader('content-type', 'application/json')
+                ->withStatus(500);
+        }
+    });
+    // -- 5 -- //    
 };
